@@ -7,8 +7,8 @@
     "version": "1.1.0",
     "icon": "https://github.com/kimjioo/MoviePilot-Plugins/blob/main/deepflood.jpg",
     "author": "kimjioo",
-    "level": 1,
-    "v1": true,
+    "level": 2,
+    "v2": true,
     "history": {
      
       "v1.0.0": "修改自madrays的nodeseek插件"
