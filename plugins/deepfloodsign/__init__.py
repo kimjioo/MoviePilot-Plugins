@@ -48,7 +48,7 @@ class deepfloodsign(_PluginBase):
     # 插件描述
     plugin_desc = "懒羊羊定制：自动完成deepflood论坛每日签到，支持随机奖励和自动重试功能"
     # 插件图标
-    plugin_icon = "https://raw.githubusercontent.com/madrays/MoviePilot-Plugins/main/icons/nodeseeksign.png"
+    plugin_icon = "https://raw.githubusercontent.com/kimjioo/MoviePilot-Plugins/main/icon/deepflood.png"
     # 插件版本
     plugin_version = "1.1.0"
     # 插件作者
