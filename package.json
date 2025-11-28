@@ -3,21 +3,15 @@
   "deepflood_sign": {
     "name": "deepflood论坛签到",
     "description": "自动完成deepflood论坛每日签到，支持随机奖励和自动重试功能",
-    "labels": "签到,NodeSeek,论坛",
-    "version": "2.1.0",
-    "icon": "https://raw.githubusercontent.com/madrays/MoviePilot-Plugins/main/icons/nodeseeksign.png",
-    "author": "madrays",
-    "level": 2,
-    "v2": true,
+    "labels": "签到,deepflood,论坛",
+    "version": "1.1.0",
+    "icon": "https://github.com/kimjioo/MoviePilot-Plugins/blob/main/deepflood.jpg",
+    "author": "kimjioo",
+    "level": 1,
+    "v1": true,
     "history": {
-      "v2.1.0": "修复统计与通知：仅统计成功记录；已签到显示今日奖励与排名；签到记录解析更稳健",
-      "v2.0.0": "重构签到：时间验证兜底；始终拉取用户与奖励；简化解析；新增近N天收益统计；修复cloudscraper初始化",
-      "v1.6.0": "增加时间验证，规避签到成功但返回非JSON的情况",
-      "v1.5.0": "增强签到成功判断逻辑，规避签到成功但返回非JSON的情况",
-      "v1.4.0": "修复响应解析问题：优化非JSON响应处理、过滤NUL字符、增强签到成功判断逻辑优化业务语义解析",
-      "v1.3.0": "稳定性优化：新增统一请求适配(优先cloudscraper→curl_cffi→requests)、强制代理注入、随机延迟、完善请求头；支持成员ID，通知与页面展示用户信息(含头像)",
-      "v1.2.0": "尝试优化成功率，未测试",
-      "v1.0.0": "支持API方式签到，绕过CloudFlare防护，支持随机奖励和自动加鸡腿"
+     
+      "v1.0.0": "修改自madrays的nodeseek插件"
     }
   }
   
