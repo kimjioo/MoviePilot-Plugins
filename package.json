@@ -1,6 +1,6 @@
 {
   
-  "deepflood_sign": {
+  "deepfloodsign": {
     "name": "deepflood论坛签到",
     "description": "自动完成deepflood论坛每日签到，支持随机奖励和自动重试功能",
     "labels": "签到,deepflood,论坛",
