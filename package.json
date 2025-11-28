@@ -5,7 +5,7 @@
     "description": "自动完成deepflood论坛每日签到，支持随机奖励和自动重试功能",
     "labels": "签到,deepflood,论坛",
     "version": "1.1.0",
-    "icon": "https://github.com/kimjioo/MoviePilot-Plugins/blob/main/deepflood.jpg",
+    "icon": "https://raw.githubusercontent.com/kimjioo/MoviePilot-Plugins/main/icon/deepflood.png",
     "author": "kimjioo",
     "level": 2,
     "v2": true,
