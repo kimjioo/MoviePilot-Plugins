@@ -1,9 +1,9 @@
 """
-DeepFlood论坛签到插件
+deepflood论坛签到插件
 版本: 1.1.0
 作者: kimjioo
 功能:
-- 自动完成DeepFlood论坛每日签到
+- 自动完成deepflood论坛每日签到
 - 支持选择随机奖励或固定奖励
 - 自动失败重试机制
 - 定时签到和历史记录
@@ -44,17 +44,17 @@ except ImportError:
 
 class deepfloodsign(_PluginBase):
     # 插件名称
-    plugin_name = "DeepFlood论坛签到"
+    plugin_name = "deepflood论坛签到"
     # 插件描述
-    plugin_desc = "懒羊羊定制：自动完成DeepFlood论坛每日签到，支持随机奖励和自动重试功能"
+    plugin_desc = "懒羊羊定制：自动完成deepflood论坛每日签到，支持随机奖励和自动重试功能"
     # 插件图标
-    plugin_icon = "https://raw.githubusercontent.com/madrays/MoviePilot-Plugins/main/icons/deepfloodsign.png"
+    plugin_icon = "https://raw.githubusercontent.com/madrays/MoviePilot-Plugins/main/icons/nodeseeksign.png"
     # 插件版本
-    plugin_version = "2.1.0"
+    plugin_version = "1.1.0"
     # 插件作者
-    plugin_author = "madrays"
+    plugin_author = "kimjioo"
     # 作者主页
-    author_url = "https://github.com/madrays"
+    author_url = "https://github.com/kimjioo"
     # 插件配置项ID前缀
     plugin_config_prefix = "deepfloodsign_"
     # 加载顺序
@@ -78,7 +78,7 @@ class deepfloodsign(_PluginBase):
     _verify_ssl = False    # 是否验证SSL证书，默认禁用
     _min_delay = 5         # 请求前最小随机等待（秒）
     _max_delay = 12        # 请求前最大随机等待（秒）
-    _member_id = ""       # DeepFlood 成员ID（可选，用于获取用户信息）
+    _member_id = ""       # deepflood 成员ID（可选，用于获取用户信息）
     _stats_days = 30
 
     _scraper = None        # cloudscraper 实例
@@ -162,7 +162,7 @@ class deepfloodsign(_PluginBase):
                 self._manual_trigger = True
                 self._scheduler.add_job(func=self.sign, trigger='date',
                                    run_date=datetime.now(tz=pytz.timezone(settings.TZ)) + timedelta(seconds=3),
-                                   name="DeepFlood论坛签到")
+                                   name="deepflood论坛签到")
                 self._onlyonce = False
                 self.update_config({
                     "onlyonce": False,
@@ -217,9 +217,9 @@ class deepfloodsign(_PluginBase):
 
     def sign(self):
         """
-        执行DeepFlood签到
+        执行deepflood签到
         """
-        logger.info("============= 开始DeepFlood签到 =============")
+        logger.info("============= 开始deepflood签到 =============")
         sign_dict = None
         
         try:
@@ -235,7 +235,7 @@ class deepfloodsign(_PluginBase):
                 if self._notify:
                     self.post_message(
                         mtype=NotificationType.SiteMessage,
-                        title="【DeepFlood论坛签到失败】",
+                        title="【deepflood论坛签到失败】",
                         text="未配置Cookie，请在设置中添加Cookie"
                     )
                 return sign_dict
@@ -375,13 +375,13 @@ class deepfloodsign(_PluginBase):
                         trigger='date',
                         run_date=retry_time,
                         id=self._scheduled_retry,
-                    name=f"DeepFlood论坛签到重试 {self._retry_count}/{max_retries}"
+                    name=f"deepflood论坛签到重试 {self._retry_count}/{max_retries}"
                     )
                     
                     if self._notify:
                         self.post_message(
                             mtype=NotificationType.SiteMessage,
-                            title="【DeepFlood论坛签到失败】",
+                            title="【deepflood论坛签到失败】",
                             text=f"签到失败: {result.get('message', '未知错误')}\n将在 {retry_minutes} 分钟后进行第 {self._retry_count}/{max_retries} 次重试\n⏱️ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                         )
                 else:
@@ -395,14 +395,14 @@ class deepfloodsign(_PluginBase):
                         retry_text = "未配置自动重试" if max_retries == 0 else f"已达到最大重试次数 ({max_retries})"
                         self.post_message(
                             mtype=NotificationType.SiteMessage,
-                            title="【DeepFlood论坛签到失败】",
+                            title="【deepflood论坛签到失败】",
                             text=f"签到失败: {result.get('message', '未知错误')}\n{retry_text}\n⏱️ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                         )
             
             return sign_dict
         
         except Exception as e:
-            logger.error(f"DeepFlood签到过程中出错: {str(e)}", exc_info=True)
+            logger.error(f"deepflood签到过程中出错: {str(e)}", exc_info=True)
             logger.error(f"错误类型: {type(e)}")
             logger.error(f"错误详情: {str(e)}")
             
@@ -422,7 +422,7 @@ class deepfloodsign(_PluginBase):
             if self._notify:
                 self.post_message(
                     mtype=NotificationType.SiteMessage,
-                    title="【DeepFlood论坛签到出错】",
+                    title="【deepflood论坛签到出错】",
                     text=f"签到过程中出错: {str(e)}\n⏱️ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                 )
             
@@ -430,7 +430,7 @@ class deepfloodsign(_PluginBase):
     
     def _run_api_sign(self):
         """
-        使用API执行DeepFlood签到
+        使用API执行deepflood签到
         """
         try:
             result = {"success": False, "signed": False, "already_signed": False, "message": ""}
@@ -735,7 +735,7 @@ class deepfloodsign(_PluginBase):
 
     def _fetch_user_info(self, member_id: str) -> dict:
         """
-        拉取 DeepFlood 用户信息（可选）
+        拉取 deepflood 用户信息（可选）
         """
         if not member_id:
             return {}
@@ -966,7 +966,7 @@ class deepfloodsign(_PluginBase):
         
         # 构建通知文本
         if "签到成功" in status:
-            title = "【✅ DeepFlood论坛签到成功】"
+            title = "【✅ deepflood论坛签到成功】"
             
             # 获取奖励信息和排名信息
             gain_info = ""
@@ -1028,7 +1028,7 @@ class deepfloodsign(_PluginBase):
             logger.info(f"通知文本构建完成，长度: {len(text)}")
             
         elif "已签到" in status:
-            title = "【ℹ️ DeepFlood论坛今日已签到】"
+            title = "【ℹ️ deepflood论坛今日已签到】"
             
             # 获取奖励信息和排名信息
             gain_info = ""
@@ -1123,7 +1123,7 @@ class deepfloodsign(_PluginBase):
             logger.info(f"已签到状态通知文本构建完成，长度: {len(text)}")
             
         else:
-            title = "【❌ DeepFlood论坛签到失败】"
+            title = "【❌ deepflood论坛签到失败】"
             
             # 获取签到记录信息（如果有的话）
             record_info = ""
@@ -1236,7 +1236,7 @@ class deepfloodsign(_PluginBase):
             logger.info(f"注册定时服务: {self._cron}")
             return [{
                 "id": "deepfloodsign",
-                "name": "DeepFlood论坛签到",
+                "name": "deepflood论坛签到",
                 "trigger": CronTrigger.from_crontab(self._cron),
                 "func": self.sign,
                 "kwargs": {}
@@ -1543,7 +1543,7 @@ class deepfloodsign(_PluginBase):
                                         'props': {
                                             'type': 'info',
                                             'variant': 'tonal',
-                                            'text': f'【使用教程】\n1. 登录DeepFlood论坛网站，按F12打开开发者工具\n2. 在"网络"或"应用"选项卡中复制Cookie\n3. 粘贴Cookie到上方输入框\n4. 设置签到时间，建议早上8点(0 8 * * *)\n5. 启用插件并保存\n\n【功能说明】\n• 随机奖励：开启则使用随机奖励，关闭则使用固定奖励\n• 使用代理：开启则使用系统配置的代理服务器访问DeepFlood\n• 验证SSL证书：关闭可能解决SSL连接问题，但会降低安全性\n• 失败重试：设置签到失败后的最大重试次数，将在5-15分钟后随机重试\n• 随机延迟：请求前随机等待，降低被风控概率\n• 用户信息：配置成员ID后，通知中展示用户名/等级/鸡腿\n• 立即运行一次：手动触发一次签到\n• 清除历史记录：勾选后保存配置，插件将清空所有签到历史、用户信息等数据，使用后会自动关闭\n\n【环境状态】\n• curl_cffi: {curl_cffi_status}；cloudscraper: {cloudscraper_status}'
+                                            'text': f'【使用教程】\n1. 登录deepflood论坛网站，按F12打开开发者工具\n2. 在"网络"或"应用"选项卡中复制Cookie\n3. 粘贴Cookie到上方输入框\n4. 设置签到时间，建议早上8点(0 8 * * *)\n5. 启用插件并保存\n\n【功能说明】\n• 随机奖励：开启则使用随机奖励，关闭则使用固定奖励\n• 使用代理：开启则使用系统配置的代理服务器访问deepflood\n• 验证SSL证书：关闭可能解决SSL连接问题，但会降低安全性\n• 失败重试：设置签到失败后的最大重试次数，将在5-15分钟后随机重试\n• 随机延迟：请求前随机等待，降低被风控概率\n• 用户信息：配置成员ID后，通知中展示用户名/等级/鸡腿\n• 立即运行一次：手动触发一次签到\n• 清除历史记录：勾选后保存配置，插件将清空所有签到历史、用户信息等数据，使用后会自动关闭\n\n【环境状态】\n• curl_cffi: {curl_cffi_status}；cloudscraper: {cloudscraper_status}'
                                         }
                                     }
                                 ]
@@ -1710,7 +1710,7 @@ class deepfloodsign(_PluginBase):
                     'component': 'VCard',
                     'props': {'variant': 'outlined', 'class': 'mb-4'},
                     'content': [
-                        {'component': 'VCardTitle', 'props': {'class': 'text-h6'}, 'text': '👤 DeepFlood 用户信息'},
+                        {'component': 'VCardTitle', 'props': {'class': 'text-h6'}, 'text': '👤 deepflood 用户信息'},
                         {
                             'component': 'VCardText',
                             'content': [
@@ -1782,7 +1782,7 @@ class deepfloodsign(_PluginBase):
                     'component': 'VCard',
                     'props': {'variant': 'outlined', 'class': 'mb-4'},
                     'content': [
-                        {'component': 'VCardTitle', 'props': {'class': 'text-h6'}, 'text': '📈 DeepFlood收益统计'},
+                        {'component': 'VCardTitle', 'props': {'class': 'text-h6'}, 'text': '📈 deepflood收益统计'},
                         {
                             'component': 'VCardText',
                             'content': [
@@ -1810,7 +1810,7 @@ class deepfloodsign(_PluginBase):
                     {
                         'component': 'VCardTitle',
                         'props': {'class': 'text-h6'},
-                        'text': '📊 DeepFlood论坛签到历史'
+                        'text': '📊 deepflood论坛签到历史'
                     },
                     {
                         'component': 'VCardText',
