@@ -683,4 +683,572 @@ class deepfloodsign(_PluginBase):
                 try:
                     data = json.loads(response_text or "")
                 except Exception:
-                    cached = self.get_data
+                    cached = self.get_data('last_attendance_record') or {}
+                    return cached or {}
+            record = data.get("record", {})
+            if record:
+                if "order" in data:
+                    record['rank'] = data.get("order")
+                    record['total_signers'] = data.get("total")
+                self.save_data('last_attendance_record', record)
+            return record
+        except Exception:
+            return {}
+
+    def _save_sign_history(self, sign_data):
+        try:
+            history = self.get_data('sign_history') or []
+            if "date" not in sign_data:
+                sign_data["date"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                
+            history.append(sign_data)
+            
+            try:
+                retention_days = int(self._history_days) if self._history_days is not None else 30
+            except (ValueError, TypeError):
+                retention_days = 30
+            
+            now = datetime.now()
+            valid_history = []
+            
+            for i, record in enumerate(history):
+                try:
+                    record_date = datetime.strptime(record["date"], '%Y-%m-%d %H:%M:%S')
+                    days_diff = (now - record_date).days
+                    if days_diff < retention_days:
+                        valid_history.append(record)
+                except (ValueError, KeyError):
+                    record["date"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    valid_history.append(record)
+            
+            self.save_data(key="sign_history", value=valid_history)
+        except Exception as e:
+            logger.error(f"保存签到历史记录失败: {str(e)}")
+
+    def clear_sign_history(self):
+        try:
+            self.save_data(key="sign_history", value=[])
+            self.save_data(key="last_sign_date", value="")
+            self.save_data(key="last_user_info", value="")
+            self.save_data(key="last_attendance_record", value="")
+        except Exception:
+            pass
+
+    def _send_sign_notification(self, sign_dict, result, user_info: dict = None, attendance_record: dict = None):
+        if not self._notify:
+            return
+            
+        status = sign_dict.get("status", "未知")
+        sign_time = sign_dict.get("date", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        
+        if "签到成功" in status:
+            title = "【✅ DeepFlood论坛签到成功】"
+            gain_info = ""
+            rank_info = ""
+            try:
+                if result.get("gain"):
+                    gain_info = f"🎁 获得: {result.get('gain')}个积分"
+                elif attendance_record and attendance_record.get("gain"):
+                    gain_info = f"🎁 今日获得: {attendance_record.get('gain')}个积分"
+                
+                if attendance_record:
+                    if attendance_record.get("rank"):
+                        rank_info = f"🏆 排名: 第{attendance_record.get('rank')}名"
+                        if attendance_record.get("total_signers"):
+                            rank_info += f" (共{attendance_record.get('total_signers')}人)"
+                    elif attendance_record.get("total_signers"):
+                        rank_info = f"📊 今日共{attendance_record.get('total_signers')}人签到"
+                
+                if rank_info:
+                    gain_info = f"{gain_info}\n{rank_info}\n"
+                else:
+                    gain_info = f"{gain_info}\n"
+            except Exception:
+                gain_info = ""
+            
+            user_info_text = ""
+            if user_info:
+                member_name = user_info.get('member_name', '未知')
+                rank = user_info.get('rank', '未知')
+                coin = user_info.get('coin', '未知')
+                user_info_text = f"👤 用户：{member_name}  等级：{rank}  积分：{coin}\n"
+            
+            text_parts = [
+                f"📢 执行结果",
+                f"━━━━━━━━━━",
+                f"🕐 时间：{sign_time}",
+                f"✨ 状态：{status}",
+                user_info_text.rstrip('\n') if user_info_text else "",
+                gain_info.rstrip('\n') if gain_info else "",
+                f"━━━━━━━━━━"
+            ]
+            text = "\n".join([part for part in text_parts if part])
+            
+        elif "已签到" in status:
+            title = "【ℹ️ DeepFlood论坛今日已签到】"
+            gain_info = ""
+            rank_info = ""
+            try:
+                today_gain = None
+                if attendance_record and attendance_record.get("gain"):
+                    today_gain = attendance_record.get('gain')
+                elif result and result.get("gain"):
+                    today_gain = result.get("gain")
+                
+                if today_gain is not None:
+                    gain_info = f"🎁 今日获得: {today_gain}个积分"
+                
+                if attendance_record.get("rank"):
+                    rank_info = f"🏆 排名: 第{attendance_record.get('rank')}名"
+                    if attendance_record.get("total_signers"):
+                        rank_info += f" (共{attendance_record.get('total_signers')}人)"
+                elif attendance_record.get("total_signers"):
+                    rank_info = f"📊 今日共{attendance_record.get('total_signers')}人签到"
+                
+                if rank_info:
+                    gain_info = f"{gain_info}\n{rank_info}\n"
+                else:
+                    gain_info = f"{gain_info}\n"
+            except Exception:
+                gain_info = ""
+            
+            user_info_text = ""
+            if user_info:
+                member_name = user_info.get('member_name', '未知')
+                rank = user_info.get('rank', '未知')
+                coin = user_info.get('coin', '未知')
+                user_info_text = f"👤 用户：{member_name}  等级：{rank}  积分：{coin}\n"
+            
+            text_parts = [
+                f"📢 执行结果",
+                f"━━━━━━━━━━",
+                f"🕐 时间：{sign_time}",
+                f"✨ 状态：{status}",
+                user_info_text.rstrip('\n') if user_info_text else "",
+                gain_info.rstrip('\n') if gain_info else "",
+                f"ℹ️ 说明：今日已完成签到，显示当前状态和奖励信息",
+                f"━━━━━━━━━━"
+            ]
+            text = "\n".join([part for part in text_parts if part])
+            
+        else:
+            title = "【❌ DeepFlood论坛签到失败】"
+            record_info = ""
+            try:
+                if attendance_record and attendance_record.get("created_at"):
+                    record_date = datetime.fromisoformat(attendance_record["created_at"].replace('Z', '+00:00'))
+                    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                    if record_date.date() == today.date():
+                        record_info = f"📊 签到记录: 今日已获得{attendance_record.get('gain', 0)}个积分"
+                        if attendance_record.get("rank"):
+                            record_info += f"，排名第{attendance_record.get('rank')}名"
+                        record_info += "\n"
+            except Exception:
+                pass
+            
+            text_parts = [
+                f"📢 执行结果",
+                f"━━━━━━━━━━",
+                f"🕐 时间：{sign_time}",
+                f"❌ 状态：{status}",
+                record_info.rstrip('\n') if record_info else "",
+                f"━━━━━━━━━━",
+                f"💡 可能的解决方法",
+                f"• 检查Cookie是否过期",
+                f"• 确认站点是否可访问",
+                f"━━━━━━━━━━"
+            ]
+            text = "\n".join([part for part in text_parts if part])
+            
+        try:
+            self.post_message(mtype=NotificationType.SiteMessage, title=title, text=text)
+        except Exception as e:
+            logger.error(f"通知发送失败: {str(e)}")
+    
+    def _save_last_sign_date(self):
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        self.save_data('last_sign_date', now)
+        
+    def _is_already_signed_today(self):
+        today = datetime.now().strftime('%Y-%m-%d')
+        history = self.get_data('sign_history') or []
+        today_records = [
+            record for record in history 
+            if record.get("date", "").startswith(today) 
+            and record.get("status") in ["签到成功", "已签到"]
+        ]
+        if today_records:
+            return True
+        last_sign_date = self.get_data('last_sign_date')
+        if last_sign_date:
+            try:
+                last_sign_datetime = datetime.strptime(last_sign_date, '%Y-%m-%d %H:%M:%S')
+                if last_sign_datetime.strftime('%Y-%m-%d') == today:
+                    return True
+            except Exception:
+                pass
+        return False
+
+    def get_state(self) -> bool:
+        return self._enabled
+
+    def get_service(self) -> List[Dict[str, Any]]:
+        if self._enabled and self._cron:
+            return [{
+                "id": "deepfloodsign",
+                "name": "DeepFlood论坛签到",
+                "trigger": CronTrigger.from_crontab(self._cron),
+                "func": self.sign,
+                "kwargs": {}
+            }]
+        return []
+
+    def get_form(self) -> Tuple[List[dict], Dict[str, Any]]:
+        curl_cffi_status = "✅ 已安装" if HAS_CURL_CFFI else "❌ 未安装"
+        cloudscraper_status = "✅ 已启用" if HAS_CLOUDSCRAPER else "❌ 未启用"
+        
+        help_text = (
+            f'【使用教程】\n'
+            f'1. 登录DeepFlood论坛网站，按F12打开开发者工具\n'
+            f'2. 在"网络"或"应用"选项卡中复制Cookie\n'
+            f'3. 粘贴Cookie到上方输入框\n'
+            f'4. 设置签到时间，建议早上8点(0 8 * * *)\n'
+            f'5. 启用插件并保存\n\n'
+            f'【功能说明】\n'
+            f'• 随机奖励：开启则使用随机奖励，关闭则使用固定奖励\n'
+            f'• 使用代理：开启则使用系统配置的代理服务器访问DeepFlood\n'
+            f'• 验证SSL证书：关闭可能解决SSL连接问题，但会降低安全性\n'
+            f'• 失败重试：设置签到失败后的最大重试次数，将在5-15分钟后随机重试\n'
+            f'• 随机延迟：请求前随机等待，降低被风控概率\n'
+            f'• 用户信息：配置成员ID后，通知中展示用户名/等级/积分\n'
+            f'• 立即运行一次：手动触发一次签到\n'
+            f'• 清除历史记录：勾选后保存配置，插件将清空所有数据\n\n'
+            f'【环境状态】\n'
+            f'• curl_cffi: {curl_cffi_status}；cloudscraper: {cloudscraper_status}'
+        )
+        
+        return [
+            {
+                'component': 'VForm',
+                'content': [
+                    {
+                        'component': 'VRow',
+                        'content': [
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enabled', 'label': '启用插件'}}]},
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'notify', 'label': '开启通知'}}]},
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'random_choice', 'label': '随机奖励'}}]},
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'onlyonce', 'label': '立即运行一次'}}]}
+                        ]
+                    },
+                    {
+                        'component': 'VRow',
+                        'content': [
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'use_proxy', 'label': '使用代理'}}]},
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'verify_ssl', 'label': '验证SSL证书'}}]},
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'clear_history', 'label': '清除历史记录'}}]},
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 3}, 'content': [{'component': 'VTextField', 'props': {'model': 'member_id', 'label': '成员ID（可选）', 'placeholder': '用于获取用户信息'}}]}
+                        ]
+                    },
+                    {
+                        'component': 'VRow',
+                        'content': [
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'min_delay', 'label': '最小随机延迟(秒)', 'type': 'number', 'placeholder': '5'}}]},
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'max_delay', 'label': '最大随机延迟(秒)', 'type': 'number', 'placeholder': '12'}}]}
+                        ]
+                    },
+                    {
+                        'component': 'VRow',
+                        'content': [
+                            {'component': 'VCol', 'props': {'cols': 12}, 'content': [{'component': 'VTextField', 'props': {'model': 'cookie', 'label': '站点Cookie', 'placeholder': '请输入站点Cookie值'}}]}
+                        ]
+                    },
+                    {
+                        'component': 'VRow',
+                        'content': [
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VCronField', 'props': {'model': 'cron', 'label': '签到周期'}}]},
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'history_days', 'label': '历史保留天数', 'type': 'number', 'placeholder': '30'}}]},
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'max_retries', 'label': '失败重试次数', 'type': 'number', 'placeholder': '3'}}]},
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'stats_days', 'label': '收益统计天数', 'type': 'number', 'placeholder': '30'}}]}
+                        ]
+                    },
+                    {
+                        'component': 'VRow',
+                        'content': [
+                            {'component': 'VCol', 'props': {'cols': 12}, 'content': [{'component': 'VAlert', 'props': {'type': 'info', 'variant': 'tonal', 'text': help_text}}]}
+                        ]
+                    }
+                ]
+            }
+        ], {
+            "enabled": False,
+            "notify": True,
+            "onlyonce": False,
+            "cookie": "",
+            "cron": "0 8 * * *",
+            "random_choice": True,
+            "history_days": 30,
+            "use_proxy": True,
+            "max_retries": 3,
+            "verify_ssl": False,
+            "min_delay": 5,
+            "max_delay": 12,
+            "member_id": "",
+            "clear_history": False,
+            "stats_days": 30
+        }
+
+    def get_page(self) -> List[dict]:
+        user_info = self.get_data('last_user_info') or {}
+        historys = self.get_data('sign_history') or []
+        
+        if not historys:
+            return [{'component': 'VAlert', 'props': {'type': 'info', 'variant': 'tonal', 'text': '暂无签到记录，请先配置Cookie并启用插件', 'class': 'mb-2'}}]
+        
+        historys = sorted(historys, key=lambda x: x.get("date", ""), reverse=True)
+        history_rows = []
+        for history in historys:
+            status_text = history.get("status", "未知")
+            success_statuses = ["签到成功", "已签到", "签到成功（时间验证）", "已签到（从记录确认）"]
+            status_color = "success" if any(s in status_text for s in success_statuses) else "error"
+            
+            reward_info = "-"
+            try:
+                if any(success_status in status_text for success_status in success_statuses):
+                    if "gain" in history:
+                        reward_info = f"{history.get('gain', 0)}个积分"
+                        if "rank" in history and "total_signers" in history:
+                            reward_info += f" (第{history.get('rank')}名，共{history.get('total_signers')}人)"
+                    else:
+                        attendance_record = self.get_data('last_attendance_record') or {}
+                        if attendance_record and attendance_record.get('gain'):
+                            reward_info = f"{attendance_record.get('gain')}个积分"
+                            if attendance_record.get('rank') and attendance_record.get('total_signers'):
+                                reward_info += f" (第{attendance_record.get('rank')}名，共{attendance_record.get('total_signers')}人)"
+            except Exception:
+                reward_info = "-"
+            
+            history_rows.append({
+                'component': 'tr',
+                'content': [
+                    {'component': 'td', 'props': {'class': 'text-caption'}, 'text': history.get("date", "")},
+                    {'component': 'td', 'content': [{'component': 'VChip', 'props': {'color': status_color, 'size': 'small', 'variant': 'outlined'}, 'text': status_text}]},
+                    {'component': 'td', 'content': [{'component': 'VChip', 'props': {'color': 'amber-darken-2' if reward_info != "-" else 'grey', 'size': 'small', 'variant': 'outlined'}, 'text': reward_info}]},
+                    {'component': 'td', 'text': history.get('message', '-')}
+                ]
+            })
+        
+        user_info_card = []
+        member_id = ""
+        avatar_url = None
+        user_name = "-"
+        rank = "-"
+        coin = "-"
+        npost = "-"
+        ncomment = "-"
+        sign_rank = None
+        total_signers = None
+        
+        if user_info:
+            member_id = str(user_info.get('member_id') or getattr(self, '_member_id', '') or '').strip()
+            avatar_url = f"https://www.deepflood.com/avatar/{member_id}.png" if member_id else None
+            user_name = user_info.get('member_name', '-')
+            rank = str(user_info.get('rank', '-'))
+            coin = str(user_info.get('coin', '-'))
+            npost = str(user_info.get('nPost', '-'))
+            ncomment = str(user_info.get('nComment', '-'))
+            
+            attendance_record = self.get_data('last_attendance_record') or {}
+            sign_rank = attendance_record.get('rank')
+            total_signers = attendance_record.get('total_signers')
+            
+            user_info_card = [
+                {
+                    'component': 'VCard',
+                    'props': {'variant': 'outlined', 'class': 'mb-4'},
+                    'content': [
+                        {'component': 'VCardTitle', 'props': {'class': 'text-h6'}, 'text': '👤 DeepFlood 用户信息'},
+                        {
+                            'component': 'VCardText',
+                            'content': [
+                                {
+                                    'component': 'VRow',
+                                    'props': {'align': 'center'},
+                                    'content': [
+                                        {
+                                            'component': 'VCol',
+                                            'props': {'cols': 12, 'md': 2},
+                                            'content': [
+                                                (
+                                                    {'component': 'VAvatar', 'props': {'size': 72, 'class': 'mx-auto'}, 'content': [{'component': 'VImg', 'props': {'src': avatar_url}}]} if avatar_url else {'component': 'VAvatar', 'props': {'size': 72, 'color': 'grey-lighten-2', 'class': 'mx-auto'}, 'text': user_name[:1]}
+                                                )
+                                            ]
+                                        },
+                                        {
+                                            'component': 'VCol',
+                                            'props': {'cols': 12, 'md': 10},
+                                            'content': [
+                                                {
+                                                    'component': 'VRow',
+                                                    'props': {'class': 'mb-2'},
+                                                    'content': [
+                                                        {'component': 'span', 'props': {'class': 'text-subtitle-1 mr-4'}, 'text': user_name},
+                                                        {'component': 'VChip', 'props': {'size': 'small', 'variant': 'outlined', 'color': 'primary', 'class': 'mr-2'}, 'text': f'等级 {rank}'},
+                                                        {'component': 'VChip', 'props': {'size': 'small', 'variant': 'outlined', 'color': 'amber-darken-2', 'class': 'mr-2'}, 'text': f'积分 {coin}'},
+                                                        {'component': 'VChip', 'props': {'size': 'small', 'variant': 'outlined', 'class': 'mr-2'}, 'text': f'主题 {npost}'},
+                                                        {'component': 'VChip', 'props': {'size': 'small', 'variant': 'outlined'}, 'text': f'评论 {ncomment}'}
+                                                    ] + ([
+                                                        {'component': 'VChip', 'props': {'size': 'small', 'variant': 'outlined', 'color': 'success', 'class': 'mr-2'}, 'text': f'签到排名 {sign_rank}'},
+                                                        {'component': 'VChip', 'props': {'size': 'small', 'variant': 'outlined', 'color': 'info', 'class': 'mr-2'}, 'text': f'总人数 {total_signers}'}
+                                                    ] if sign_rank and total_signers else [])
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+
+        stats = self.get_data('last_signin_stats') or {}
+        stats_card = []
+        if stats:
+            period = stats.get('period') or f"近{self._stats_days}天"
+            days_count = stats.get('days_count', 0)
+            total_amount = stats.get('total_amount', 0)
+            average = stats.get('average', 0)
+            stats_card = [
+                {
+                    'component': 'VCard',
+                    'props': {'variant': 'outlined', 'class': 'mb-4'},
+                    'content': [
+                        {'component': 'VCardTitle', 'props': {'class': 'text-h6'}, 'text': '📈 DeepFlood收益统计'},
+                        {
+                            'component': 'VCardText',
+                            'content': [
+                                {'component': 'div', 'props': {'class': 'mb-2'}, 'text': f'{period} 已签到 {days_count} 天'},
+                                {
+                                    'component': 'VRow',
+                                    'content': [
+                                        {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VChip', 'props': {'variant': 'outlined', 'color': 'amber-darken-2'}, 'text': f'总积分 {total_amount}'}]},
+                                        {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VChip', 'props': {'variant': 'outlined', 'color': 'primary'}, 'text': f'平均/日 {average}'}]},
+                                        {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VChip', 'props': {'variant': 'outlined'}, 'text': f'统计天数 {days_count}'}]},
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+
+        return user_info_card + stats_card + [
+            {
+                'component': 'VCard',
+                'props': {'variant': 'outlined', 'class': 'mb-4'},
+                'content': [
+                    {'component': 'VCardTitle', 'props': {'class': 'text-h6'}, 'text': '📊 DeepFlood论坛签到历史'},
+                    {'component': 'VCardText', 'content': [{'component': 'VTable', 'props': {'hover': True, 'density': 'compact'}, 'content': [{'component': 'thead', 'content': [{'component': 'tr', 'content': [{'component': 'th', 'text': '时间'}, {'component': 'th', 'text': '状态'}, {'component': 'th', 'text': '奖励'}, {'component': 'th', 'text': '消息'}]}]}, {'component': 'tbody', 'content': history_rows}]}]}
+                ]
+            }
+        ]
+
+    def stop_service(self):
+        try:
+            if self._scheduler:
+                self._scheduler.remove_all_jobs()
+                if self._scheduler.running:
+                    self._scheduler.shutdown()
+                self._scheduler = None
+        except Exception:
+            pass
+
+    def get_command(self) -> List[Dict[str, Any]]:
+        return []
+
+    def get_api(self) -> List[Dict[str, Any]]:
+        return [] 
+
+    def _get_signin_stats(self, days: int = 30) -> dict:
+        if not self._cookie:
+            return {}
+        if days <= 0:
+            days = 1
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+            'origin': 'https://www.deepflood.com',
+            'referer': 'https://www.deepflood.com/board',
+            'Cookie': self._cookie
+        }
+        tz = pytz.timezone('Asia/Shanghai')
+        now_shanghai = datetime.now(tz)
+        query_start_time = now_shanghai - timedelta(days=days)
+        all_records = []
+        page = 1
+        proxies = self._get_proxies()
+        try:
+            while page <= 20:
+                url = f'https://www.deepflood.com/api/account/credit/page-{page}'
+                resp = self._smart_get(url=url, headers=headers, proxies=proxies, timeout=30)
+                data = {}
+                try:
+                    data = resp.json()
+                except Exception:
+                    break
+                if not data.get('success') or not data.get('data'):
+                    break
+                records = data.get('data', [])
+                if not records:
+                    break
+                try:
+                    last_record_time = datetime.fromisoformat(records[-1][3].replace('Z', '+00:00')).astimezone(tz)
+                except Exception:
+                    break
+                if last_record_time < query_start_time:
+                    for record in records:
+                        try:
+                            record_time = datetime.fromisoformat(record[3].replace('Z', '+00:00')).astimezone(tz)
+                        except Exception:
+                            continue
+                        if record_time >= query_start_time:
+                            all_records.append(record)
+                    break
+                else:
+                    all_records.extend(records)
+                page += 1
+        except Exception:
+            pass
+        signin_records = []
+        for record in all_records:
+            try:
+                amount, balance, description, timestamp = record
+                record_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00')).astimezone(tz)
+            except Exception:
+                continue
+            if record_time >= query_start_time and ('签到收益' in description and ('积分' in description or '奖励' in description or '鸡腿' in description)):
+                signin_records.append({'amount': amount, 'date': record_time.strftime('%Y-%m-%d'), 'description': description})
+        period_desc = f'近{days}天' if days != 1 else '今天'
+        if not signin_records:
+            try:
+                history = self.get_data('sign_history') or []
+                success_statuses = ["签到成功", "已签到", "签到成功（时间验证）", "已签到（从记录确认）"]
+                fallback_records = []
+                for rec in history:
+                    try:
+                        rec_dt = datetime.strptime(rec.get('date', ''), '%Y-%m-%d %H:%M:%S').astimezone(tz)
+                    except Exception:
+                        continue
+                    if rec_dt >= query_start_time and rec.get('status') in success_statuses and rec.get('gain'):
+                        fallback_records.append({'amount': rec.get('gain', 0), 'date': rec_dt.strftime('%Y-%m-%d'), 'description': '本地历史-签到收益'})
+                if not fallback_records:
+                    return {'total_amount': 0, 'average': 0, 'days_count': 0, 'records': [], 'period': period_desc}
+                total_amount = sum(r['amount'] for r in fallback_records)
+                days_count = len(fallback_records)
+                average = round(total_amount / days_count, 2) if days_count > 0 else 0
+                return {'total_amount': total_amount, 'average': average, 'days_count': days_count, 'records': fallback_records, 'period': period_desc}
+            except Exception:
+                return {'total_amount': 0, 'average': 0, 'days_count': 0, 'records': [], 'period': period_desc}
+        total_amount = sum(r['amount'] for r in signin_records)
+        days_count = len(signin_records)
+        average = round(total_amount / days_count, 2) if days_count > 0 else 0
+        return {'total_amount': total_amount, 'average': average, 'days_count': days_count, 'records': signin_records, 'period': period_desc}
