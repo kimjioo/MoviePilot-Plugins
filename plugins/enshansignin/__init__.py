@@ -1,12 +1,7 @@
-import re
-import requests
 from typing import Any, List, Dict, Tuple
-from apscheduler.triggers.cron import CronTrigger
-
 from app.plugins import _PluginBase
 from app.core.event import eventmanager, Event
 from app.log import logger
-from app.utils.commons import SystemUtils
 
 class EnshanSignin(_PluginBase):
     # 插件名称
@@ -16,7 +11,7 @@ class EnshanSignin(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/kimjioo/MoviePilot-Plugins/main/icon/enshan.ico"
     # 插件版本
-    plugin_version = "1.1"
+    plugin_version = "1.2"
     # 插件作者
     plugin_author = "kimjioo"
     # 作者主页
@@ -33,8 +28,14 @@ class EnshanSignin(_PluginBase):
     _cookie = ""
     _cron = ""
     _notify = False
-
+    
     def init_plugin(self, config: dict = None):
+        """
+        插件初始化
+        """
+        # 局部引用，防止依赖未安装导致插件加载失败
+        from apscheduler.triggers.cron import CronTrigger
+        
         if config:
             self._enabled = config.get("enabled")
             self._cookie = config.get("cookie")
@@ -174,6 +175,11 @@ class EnshanSignin(_PluginBase):
         if not self._cookie:
             return
 
+        # 局部引用，防止加载时循环依赖或模块缺失
+        import re
+        import requests
+        from app.utils.commons import SystemUtils
+
         logger.info("【恩山签到】开始执行签到任务...")
         
         headers = {
@@ -216,17 +222,4 @@ class EnshanSignin(_PluginBase):
             sign_resp = session.post(sign_url, data=data, timeout=30)
             res_text = sign_resp.text
 
-            # 第三步：解析结果
-            if "恭喜你签到成功" in res_text or "已经签到" in res_text:
-                logger.info("【恩山签到】签到成功")
-                if not self._notify:
-                    SystemUtils.push_message(title="恩山签到成功", content="今日签到任务已完成。")
-            elif "请稍后再试" in res_text:
-                logger.warning("【恩山签到】操作频繁或需要验证码")
-            else:
-                logger.error(f"【恩山签到】未知响应: {res_text[:100]}")
-                SystemUtils.push_message(title="恩山签到异常", content=f"响应内容: {res_text[:100]}")
-
-        except Exception as e:
-            logger.error(f"【恩山签到】网络请求出错: {e}")
-            SystemUtils.push_message(title="恩山签到出错", content=str(e))
+            # 第三步：
