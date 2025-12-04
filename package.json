@@ -13,6 +13,19 @@
      
       "v1.0.0": "修改自madrays的nodeseek插件"
     }
+  },
+  "enshansignin": {
+    "name": "恩山论坛签到",
+    "description": "自动完成恩山无线论坛(Right.com.cn)每日签到，支持每日心情打卡、自定义Cron定时及Cookie失效通知",
+    "labels": "签到,恩山,right,论坛",
+    "version": "1.0.0",
+    "icon": "https://www.right.com.cn/favicon.ico",
+    "author": "kimjioo",
+    "level": 2,
+    "v2": true,
+    "history": {
+      "v1.0.0": "初始版本发布"
+    }
   }
   
 
