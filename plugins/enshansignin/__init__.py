@@ -14,7 +14,7 @@ class EnshanSignin(_PluginBase):
     # 插件描述
     plugin_desc = "恩山无线论坛(Right.com.cn)每日自动签到，支持心情打卡。"
     # 插件图标
-    plugin_icon = "https://www.right.com.cn/favicon.ico"
+    plugin_icon = "https://raw.githubusercontent.com/kimjioo/MoviePilot-Plugins/main/icon/enshan.ico"
     # 插件版本
     plugin_version = "1.1"
     # 插件作者
